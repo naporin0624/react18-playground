@@ -39,6 +39,8 @@ const useHook = () => {
 
 function App() {
   const id = useId();
+
+  // rerender check
   const [, setState] = useState(0);
   useEffect(() => {
     const id = setInterval(() => {
@@ -51,24 +53,37 @@ function App() {
   }, []);
 
   return (
-    <>
-      <Suspense fallback="initial loading...">
+    <div className="container mx-auto px-2">
+      <header className="mt-2 mb-8">
+        <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+          React18 playground
+        </h1>
+      </header>
+      <div className="bg-slate-100 rounded-xl p-8 dark:bg-stale-800 mb-4">
         <p>ComponentID: {id}</p>
-      </Suspense>
-      <Suspense fallback="initial loading...">
-        <Delay />
-      </Suspense>
-      <Suspense fallback="initial loading...">
+      </div>
+      <div className="bg-slate-100 rounded-xl p-8 dark:bg-stale-800 mb-4">
         <DeferredValue />
-      </Suspense>
-      <Suspense fallback="initial loading...">
-        <Timestamp />
-      </Suspense>
-      <Suspense fallback="apollonuus">
-        <Apollonius />
-      </Suspense>
-      <Redux />
-    </>
+      </div>
+      <div className="bg-slate-100 rounded-xl p-8 dark:bg-stale-800 mb-4">
+        <Suspense fallback="initial loading...">
+          <Delay />
+        </Suspense>
+      </div>
+      <div className="bg-slate-100 rounded-xl p-8 dark:bg-stale-800 mb-4">
+        <Suspense fallback="initial loading...">
+          <Timestamp />
+        </Suspense>
+      </div>
+      <div className="bg-slate-100 rounded-xl p-8 dark:bg-stale-800 mb-4">
+        <Redux />
+      </div>
+      <div className="bg-slate-100 rounded-xl p-8 dark:bg-stale-800 mb-4">
+        <Suspense fallback="apollo-client-loading...">
+          <ApolloClientSample />
+        </Suspense>
+      </div>
+    </div>
   );
 }
 
@@ -97,29 +112,93 @@ const Redux: VFC = memo(() => {
   const delayTime = useReadData(datasources.timeout(timeout));
 
   return (
-    <div
-      style={{
-        border: "solid 1px #020202",
-        boxSizing: "border-box",
-        padding: "1em",
-      }}
-    >
-      <div style={{ paddingBottom: "1em", boxSizing: "border-box" }}>
+    <>
+      <div>
         <p>loading: {loading ? "now" : "finished"}</p>
       </div>
-      <div style={{ paddingBottom: "1em", boxSizing: "border-box" }}>
+      <div>
         <p>redux</p>
-        <p>count: {value}</p>
-        <div style={{ display: "flex", gap: 12 }}>
-          <button onClick={add}>+</button>
-          <button onClick={sub}>-</button>
+        <div className="flex items-center gap-6">
+          <p>count: {value}</p>
+          <div className="flex gap-2">
+            <button
+              onClick={add}
+              className={[
+                "bg-slate-900",
+                "hover:bg-slate-700",
+                "focus:outline-none",
+                "focus:ring-2",
+                "focus:ring-slate-400",
+                "focus:ring-offset-2",
+                "focus:ring-offset-slate-50",
+                "text-white",
+                "font-semibold",
+                "w-12",
+                "h-12",
+                "rounded-lg",
+                "w-full",
+                "flex",
+                "items-center",
+                "justify-center",
+                "box-border",
+              ].join(" ")}
+            >
+              +
+            </button>
+            <button
+              onClick={sub}
+              className={[
+                "bg-slate-900",
+                "hover:bg-slate-700",
+                "focus:outline-none",
+                "focus:ring-2",
+                "focus:ring-slate-400",
+                "focus:ring-offset-2",
+                "focus:ring-offset-slate-50",
+                "text-white",
+                "font-semibold",
+                "box-border",
+                "w-12",
+                "h-12",
+                "rounded-lg",
+                "w-full",
+                "flex",
+                "items-center",
+                "justify-center",
+              ].join(" ")}
+            >
+              -
+            </button>
+          </div>
         </div>
       </div>
-      <div style={{ paddingBottom: "1em", boxSizing: "border-box" }}>
+      <div>
         <p>suspend: {Math.round(delayTime * 100) / 100}</p>
-        <button onClick={fire}>startTransition</button>
+        <button
+          onClick={fire}
+          className={[
+            "bg-slate-900",
+            "hover:bg-slate-700",
+            "focus:outline-none",
+            "focus:ring-2",
+            "focus:ring-slate-400",
+            "focus:ring-offset-2",
+            "focus:ring-offset-slate-50",
+            "text-white",
+            "font-semibold",
+            "h-12",
+            "px-6",
+            "rounded-lg",
+            "w-full",
+            "flex",
+            "items-center",
+            "justify-center",
+          ].join(" ")}
+        >
+          startTransition
+        </button>
       </div>
-    </div>
+    </>
   );
 });
 
@@ -193,10 +272,9 @@ const Timestamp: VFC = memo(() => {
   );
 });
 
-
-
-type SearchQuery = TypedDocumentNode<{
+type SampleQuery = TypedDocumentNode<{
   search: { issueCount: number; nodes: { number: string; title: string }[] };
+  user: { login: string; name: string; websiteUrl: string; avatarUrl: string };
 }>;
 
 const USER_FIELDS = gql`
@@ -206,11 +284,11 @@ const USER_FIELDS = gql`
     websiteUrl
     avatarUrl
   }
-`
+`;
 
-const searchQuery: SearchQuery = gql`
+const sampleQuery: SampleQuery = gql`
   ${USER_FIELDS}
-  query searchRepositoryIssue {
+  query SampleQuery {
     search(query: "repo:apollographql/apollo is:issue", type: ISSUE, first: 5) {
       issueCount
       nodes {
@@ -226,15 +304,13 @@ const searchQuery: SearchQuery = gql`
     }
   }
 `;
-const Apollonius = () => {
-  const searchQueryResult = useQuery(
-    searchQuery,
-    // useMemo(() => ({ pollInterval: 10000, variables: {} }), [])
+const ApolloClientSample = () => {
+  const data = useQuery(
+    sampleQuery,
+    useMemo(() => ({ pollInterval: 10000, variables: {} }), [])
   );
 
   return (
-    <p style={{ whiteSpace: "pre-wrap" }}>
-      {JSON.stringify(searchQueryResult, null, 2)}
-    </p>
+    <p style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(data, null, 2)}</p>
   );
 };

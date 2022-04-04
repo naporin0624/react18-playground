@@ -1,7 +1,6 @@
 import React, { Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
-import "reset-css";
 import { Provider as DatasourceProvider } from "@naporin0624/react-flowder";
 import { Provider as ReduxProvider } from "react-redux";
 import store from "./ducks";
@@ -10,6 +9,8 @@ import {
   InMemoryCache,
   ApolloProvider,
 } from "@apollo/client";
+
+import "./index.css";
 
 const token = import.meta.env.VITE_GITHUB_TOKEN;
 const client = new ApolloClient({
