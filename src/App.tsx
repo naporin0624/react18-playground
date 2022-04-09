@@ -4,31 +4,26 @@ import {
   useTransition,
   useSyncExternalStore,
   useCallback,
-  useDeferredValue,
   Suspense,
   VFC,
   memo,
-  ChangeEventHandler,
   useMemo,
 } from "react";
 import { datasource, useReadData } from "@naporin0624/react-flowder";
-import { from, interval } from "rxjs";
+import { useImage } from "@naporin0624/react-flowder/utils";
 import {
-  decrement,
-  increment,
-  incrementByAmount,
-  selectCount,
-} from "./ducks/counter";
-import { useDispatch, useSelector } from "react-redux";
+  useSyncQuery,
+  useApolloReset,
+} from "@naporin0624/react-flowder/apollo";
+import { interval } from "rxjs";
 import { gql, TypedDocumentNode } from "@apollo/client";
-import { useQuery } from "./useQuery";
 import { useEffect } from "react";
 
 const delay = (ms = 1000) => {
   return new Promise<number>((resolve) => setTimeout(() => resolve(ms), ms));
 };
 const datasources = {
-  timeout: datasource((ms: number = 1000) => from(delay(ms))),
+  timeout: datasource(delay),
   interval: datasource(() => interval(2000)),
 };
 
@@ -63,7 +58,9 @@ function App() {
         <p>ComponentID: {id}</p>
       </div>
       <div className="bg-slate-100 rounded-xl p-8 dark:bg-stale-800 mb-4">
-        <DeferredValue />
+        <Suspense fallback="image-loading....">
+          <Images />
+        </Suspense>
       </div>
       <div className="bg-slate-100 rounded-xl p-8 dark:bg-stale-800 mb-4">
         <Suspense fallback="initial loading...">
@@ -76,9 +73,6 @@ function App() {
         </Suspense>
       </div>
       <div className="bg-slate-100 rounded-xl p-8 dark:bg-stale-800 mb-4">
-        <Redux />
-      </div>
-      <div className="bg-slate-100 rounded-xl p-8 dark:bg-stale-800 mb-4">
         <Suspense fallback="apollo-client-loading...">
           <ApolloClientSample />
         </Suspense>
@@ -88,119 +82,6 @@ function App() {
 }
 
 export default memo(App);
-
-const Redux: VFC = memo(() => {
-  const value = useSelector(selectCount);
-  const dispatch = useDispatch();
-  const add = () => {
-    dispatch(increment());
-  };
-  const sub = () => {
-    dispatch(decrement());
-  };
-
-  const [timeout, setTime] = useState(100);
-  const [loading, startTransition] = useTransition();
-  const fire = useCallback(() => {
-    startTransition(() => {
-      const next = Math.round(Math.random() * 10);
-      setTime(next);
-      dispatch(incrementByAmount(next));
-    });
-  }, [timeout]);
-
-  const delayTime = useReadData(datasources.timeout(timeout));
-
-  return (
-    <>
-      <div>
-        <p>loading: {loading ? "now" : "finished"}</p>
-      </div>
-      <div>
-        <p>redux</p>
-        <div className="flex items-center gap-6">
-          <p>count: {value}</p>
-          <div className="flex gap-2">
-            <button
-              onClick={add}
-              className={[
-                "bg-slate-900",
-                "hover:bg-slate-700",
-                "focus:outline-none",
-                "focus:ring-2",
-                "focus:ring-slate-400",
-                "focus:ring-offset-2",
-                "focus:ring-offset-slate-50",
-                "text-white",
-                "font-semibold",
-                "w-12",
-                "h-12",
-                "rounded-lg",
-                "w-full",
-                "flex",
-                "items-center",
-                "justify-center",
-                "box-border",
-              ].join(" ")}
-            >
-              +
-            </button>
-            <button
-              onClick={sub}
-              className={[
-                "bg-slate-900",
-                "hover:bg-slate-700",
-                "focus:outline-none",
-                "focus:ring-2",
-                "focus:ring-slate-400",
-                "focus:ring-offset-2",
-                "focus:ring-offset-slate-50",
-                "text-white",
-                "font-semibold",
-                "box-border",
-                "w-12",
-                "h-12",
-                "rounded-lg",
-                "w-full",
-                "flex",
-                "items-center",
-                "justify-center",
-              ].join(" ")}
-            >
-              -
-            </button>
-          </div>
-        </div>
-      </div>
-      <div>
-        <p>suspend: {Math.round(delayTime * 100) / 100}</p>
-        <button
-          onClick={fire}
-          className={[
-            "bg-slate-900",
-            "hover:bg-slate-700",
-            "focus:outline-none",
-            "focus:ring-2",
-            "focus:ring-slate-400",
-            "focus:ring-offset-2",
-            "focus:ring-offset-slate-50",
-            "text-white",
-            "font-semibold",
-            "h-12",
-            "px-6",
-            "rounded-lg",
-            "w-full",
-            "flex",
-            "items-center",
-            "justify-center",
-          ].join(" ")}
-        >
-          startTransition
-        </button>
-      </div>
-    </>
-  );
-});
 
 const Delay: VFC = memo(() => {
   const id = useHook();
@@ -221,16 +102,6 @@ const Delay: VFC = memo(() => {
       <button onClick={fire}>fire</button>
     </div>
   );
-});
-
-const DeferredValue: VFC = memo(() => {
-  const [value, setValue] = useState("");
-  const handler: ChangeEventHandler<HTMLInputElement> = useCallback((event) => {
-    setValue(event.target.value);
-  }, []);
-  const _value = useDeferredValue(value);
-
-  return <input type="text" value={_value} onChange={handler} />;
 });
 
 const createStore = () => {
@@ -293,8 +164,10 @@ const sampleQuery: SampleQuery = gql`
       issueCount
       nodes {
         ... on Issue {
+          id
           number
           title
+          createdAt
         }
       }
     }
@@ -304,13 +177,34 @@ const sampleQuery: SampleQuery = gql`
     }
   }
 `;
-const ApolloClientSample = () => {
-  const data = useQuery(
+const ApolloClientSample = memo(() => {
+  const data = useSyncQuery(
     sampleQuery,
     useMemo(() => ({ pollInterval: 10000, variables: {} }), [])
   );
+  const reset = useApolloReset();
 
   return (
-    <p style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(data, null, 2)}</p>
+    <div>
+      <button onClick={reset}>reset</button>
+      <p style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(data, null, 2)}</p>
+    </div>
   );
-};
+});
+
+const Images = memo(() => {
+  const [img] = useImage(
+    "http://placekitten.com/g/500/500",
+    "http://placekitten.com/g/2000/2000",
+    "http://placekitten.com/g/4000/4000"
+  );
+
+  return (
+    <img
+      src={img.src}
+      width={img.width}
+      height={img.height}
+      style={{ width: 200, height: 200, objectFit: "contain" }}
+    />
+  );
+});

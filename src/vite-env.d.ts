@@ -1,6 +1,4 @@
 /// <reference types="vite/client" />
-/// <reference types="react-dom/experimental" />
-/// <reference types="react/experimental" />
 
 
 interface ImportMetaEnv {
